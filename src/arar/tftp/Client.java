@@ -74,7 +74,7 @@ public class Client {
         
         try { 
                 stream = new FileInputStream(localFile);
-                byte[] buffer = new byte[516];
+                byte[] buffer = new byte[4];
                 DatagramPacket ack;
                 if ( stream != null)
                 {
@@ -118,11 +118,11 @@ public class Client {
                                  //on recupere ensuite le numero de block
                                 buff_block = buff_code.slice();
                                 block = buff_block.getShort(2);
-                                
-                                System.out.println("je suis inside echange block : " + (int)block);
                                  
                                  if ( Objects.equals(codeOp, CODE_ACK) )
                                  {
+                                     System.out.println("je suis inside echange block : " + this.ChunkNumber);
+                                     
                                      if (this.ChunkNumber == (int)block ) //verifie si c'est le bon block
                                      { 
                                          this.acknowledged = true;
@@ -139,7 +139,7 @@ public class Client {
                                  this.attempts++;
                                  
                             }
-                            while ( this.acknowledged == true || this.attempts ==3);
+                            while ( this.acknowledged == true && this.attempts <=3);
                             
                             if (this.attempts == 3) { return -4;}
                             this.ChunkNumber++;
