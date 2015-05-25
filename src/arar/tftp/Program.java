@@ -14,7 +14,7 @@ public abstract class Program
     {
         try
         {
-            System.out.println(
+            /*System.out.println(
                     "Code de retour : " +
                     TFTPClient.receiveFile(
                         "mIRC.tx",
@@ -22,6 +22,12 @@ public abstract class Program
                         InetAddress.getByName("127.0.0.1"),
                         69
                     )
+            );*/
+            
+            Client c = new Client();
+            
+            System.out.println(
+                    "Code de retour : " + c.sendFile("mIRC.txt","local-mIRC.txt",InetAddress.getByName("127.0.0.1"), 69)
             );
         }
         catch(UnknownHostException e)

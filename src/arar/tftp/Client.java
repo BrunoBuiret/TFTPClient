@@ -19,6 +19,7 @@ import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -29,19 +30,19 @@ import java.util.logging.Logger;
 public class Client {
     
     // Read request (RRQ)
-    protected final static String CODE_RRQ = "1";
+    protected final static Short CODE_RRQ = 1;
     
     // Write request (WRQ)
-    protected final static String CODE_WRQ = "2";
+    protected final static Short CODE_WRQ = 2;
     
     // Data (DATA)
-    protected final static String CODE_DATA = "3";
+    protected final static Short CODE_DATA = 2;
     
     // Acknowledgement (ACK)
-    protected final static String CODE_ACK = "4";
+    protected final static Short CODE_ACK = 4;
     
     // Error (ERROR)
-    protected final static String CODE_ERROR = "5";
+    protected final static Short CODE_ERROR = 5;
     
     private File fichier;
     private int totalBytes , readBytes, ChunkNumber, attempts ;
@@ -53,10 +54,11 @@ public class Client {
     private String remoteFile;
     
     
-    public int sendFile (String remotelFile, String localFile , InetAddress serverAdress ,int ServerPort) {
+    public int sendFile (String remFile, String localFile , InetAddress serverAdress ,int ServerPort) {
         
         FileInputStream stream = null;
-        this.remoteFile = remoteFile;
+        this.remoteFile = remFile;
+        System.out.println(remoteFile);
         
         
         fichier = new File (localFile);
@@ -72,7 +74,7 @@ public class Client {
         
         try { 
                 stream = new FileInputStream(localFile);
-                byte[] buffer = new byte[4];
+                byte[] buffer = new byte[516];
                 DatagramPacket ack;
                 if ( stream != null)
                 {
@@ -84,20 +86,17 @@ public class Client {
                     
                     //ensuite on attend le nouveau paquet( ACK )
                     packet = new DatagramPacket(buffer,4);
-                    socket.receive(packet); 
-                    ByteBuffer buff_code = ByteBuffer.wrap(buffer);
-                    byte [] codeOp = new byte[2]; // on récupère l'entête
-                    buff_code.get(codeOp);
+                    socket.receive(packet);
+                    ByteBuffer buff_code = ByteBuffer.wrap(data);
+                    Short codeOp = 0; // on récupère l'entête
+                    buff_code.getShort(codeOp);
                     
                     //on recupere ensuite le numero de block
                     ByteBuffer buff_block = buff_code.slice();
-                    byte [] block = new byte [2];
-                    buff_block.get(block);
-                    //suite
-                    String c = new String(codeOp, "UTF-8");
-                    String b = new String(block, "UTF-8");
-                    
-                    if ( c.equals(CODE_ACK) && b.equals("0")) {
+                    Short block = 0;
+                    buff_block.getShort(block);
+
+                    if ( Objects.equals(codeOp, CODE_ACK) && block == 0) {
                     this.ChunkNumber++;
                     this.readBytes= 0;
                     this.totalBytes = localFile.length();
@@ -118,19 +117,15 @@ public class Client {
                                  //analyse de ACK
                                  buffer = packet.getData();
                                  buff_code = ByteBuffer.wrap(buffer);
-                                 codeOp = new byte[2]; // on récupère l'entête
-                                 buff_code.get(codeOp);
-                                 c = new String(codeOp, "UTF-8");
+                                 buff_code.getShort(codeOp);
                                  //on recupere ensuite le numero de block
                                 buff_block = buff_code.slice();
-                                block = new byte [2];
-                                buff_block.get(block);
-                                b = new String(block, "UTF-8");
+                                buff_block.getShort(block);
                               
                                  
-                                 if ( c.equals(CODE_ACK))
+                                 if ( Objects.equals(codeOp, CODE_ACK) )
                                  {
-                                     if (this.ChunkNumber == Integer.valueOf(b)) //verifie si c'est le bon block
+                                     if (this.ChunkNumber == (int)block ) //verifie si c'est le bon block
                                      { 
                                          this.acknowledged = true;
                                      }
@@ -138,10 +133,10 @@ public class Client {
                                      
                                          
                                  }
-                                 else if ( c.equals(CODE_ERROR))
+                                 else if ( Objects.equals(codeOp, CODE_ERROR) )
                                  {
                                      // erreur côté Serveur
-                                     return Integer.valueOf(b);
+                                     return (int)block;
                                  }
                                 
                                  this.attempts++;
@@ -161,17 +156,11 @@ public class Client {
                     else { /* return the servor error*/
                             buffer = packet.getData();
                             buff_code = ByteBuffer.wrap(buffer);
-                            codeOp = new byte[2]; // on récupère l'entête
-                            buff_code.get(codeOp);
+                            buff_code.getShort(codeOp);
                              //on recupere le code erreur
                             buff_block = buff_code.slice();
-                            block = new byte [2];
-                            buff_block.get(block);
-                            b = new String(block, "UTF-8");
-                             
-                             return Integer.valueOf(b);
-                          
-                          
+                            buff_block.getShort(block);
+                             return (int)block;
                     }
                      
                 }
