@@ -97,13 +97,13 @@ public class Client {
                     if ( Objects.equals(codeOp, CODE_ACK) && block == 0) {
                     this.ChunkNumber++;
                     this.readBytes= 0;
+                    this.attempts=1;
                     this.totalBytes = localFile.length();
                     
                      do {
                             stream.read(data);
                             this.readBytes+= data.length;
                             this.acknowledged = false;
-                            this.attempts=1;
                             do {
                                  this.packet = DATA(this.ChunkNumber,data,serverAdress, ServerPort);
                                  this.socket.send(packet);
@@ -139,7 +139,7 @@ public class Client {
                                  this.attempts++;
                                  
                             }
-                            while ( this.acknowledged == true && this.attempts <=3);
+                            while ( this.acknowledged == false && this.attempts <=3);
                             
                             if (this.attempts == 3) { return -4;}
                             this.ChunkNumber++;
