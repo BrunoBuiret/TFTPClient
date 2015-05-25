@@ -87,15 +87,13 @@ public class Client {
                     //ensuite on attend le nouveau paquet( ACK )
                     packet = new DatagramPacket(buffer,4);
                     socket.receive(packet);
-                    ByteBuffer buff_code = ByteBuffer.wrap(data);
-                    Short codeOp = 0; // on récupère l'entête
-                    buff_code.getShort(codeOp);
+                    ByteBuffer buff_code = ByteBuffer.wrap(buffer);
+                    Short codeOp = buff_code.getShort(0);
                     
                     //on recupere ensuite le numero de block
                     ByteBuffer buff_block = buff_code.slice();
-                    Short block = 0;
-                    buff_block.getShort(block);
-
+                    Short block = buff_block.getShort(2);
+                     System.out.println((int)codeOp + " "+(int)block);
                     if ( Objects.equals(codeOp, CODE_ACK) && block == 0) {
                     this.ChunkNumber++;
                     this.readBytes= 0;
@@ -106,7 +104,6 @@ public class Client {
                             this.readBytes+= data.length;
                             this.acknowledged = false;
                             this.attempts=1;
-                            
                             do {
                                  this.packet = DATA(this.ChunkNumber,data,serverAdress, ServerPort);
                                  this.socket.send(packet);
@@ -117,11 +114,12 @@ public class Client {
                                  //analyse de ACK
                                  buffer = packet.getData();
                                  buff_code = ByteBuffer.wrap(buffer);
-                                 buff_code.getShort(codeOp);
+                                 codeOp = buff_code.getShort(0);
                                  //on recupere ensuite le numero de block
                                 buff_block = buff_code.slice();
-                                buff_block.getShort(block);
-                              
+                                block = buff_block.getShort(2);
+                                
+                                System.out.println("je suis inside echange block : " + (int)block);
                                  
                                  if ( Objects.equals(codeOp, CODE_ACK) )
                                  {
@@ -130,8 +128,7 @@ public class Client {
                                          this.acknowledged = true;
                                      }
                                      else { return -6;} // sinon erreur réseau
-                                     
-                                         
+                                              
                                  }
                                  else if ( Objects.equals(codeOp, CODE_ERROR) )
                                  {
