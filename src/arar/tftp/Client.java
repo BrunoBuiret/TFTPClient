@@ -153,11 +153,11 @@ public class Client {
                     else { /* return the servor error*/
                             buffer = packet.getData();
                             buff_code = ByteBuffer.wrap(buffer);
-                            buff_code.getShort(codeOp);
+                            codeOp = buff_code.getShort(0);
                              //on recupere le code erreur
                             buff_block = buff_code.slice();
-                            buff_block.getShort(block);
-                             return (int)block;
+                            int error = buff_block.getInt(2);
+                             return error;
                     }
                      
                 }
