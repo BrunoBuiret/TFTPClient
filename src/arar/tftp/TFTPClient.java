@@ -257,6 +257,9 @@ public class TFTPClient
             code = responseBuffer.getShort();
             chunkNumber = responseBuffer.getShort();
             
+            // DEBUG
+            System.out.println("<- " + responseBuffer.getShort(0) + " " + responseBuffer.getShort(2));
+            
             if(code == 4 && chunkNumber == 0)
             {
                 // Mémorisation du nouveau port
@@ -290,9 +293,12 @@ public class TFTPClient
                             responseData = new byte[512];
                             responsePacket = new DatagramPacket(responseData, 512);
                             socket.receive(responsePacket);
-
+                            
                             // Décodage de la réponse
                             responseBuffer = ByteBuffer.wrap(responseData);
+                            
+                            // DEBUG
+                            System.out.println("<- " + responseBuffer.getShort(0) + " " + responseBuffer.getShort(2));
 
                             if(responseBuffer.getShort() == TFTPClient.CODE_ACK)
                             {
@@ -395,6 +401,9 @@ public class TFTPClient
             dataWriter.writeBytes(mode);
             dataWriter.writeByte(0);
             
+            // DEBUG
+            System.out.println("-> WRQ(" + TFTPClient.CODE_WRQ + ") " + remoteFile);
+            
             return new DatagramPacket(dataStream.toByteArray(), dataStream.size(), serverAddress, serverPort);
         }
         catch(IOException e)
@@ -428,6 +437,9 @@ public class TFTPClient
             dataWriter.writeShort(TFTPClient.CODE_DATA);
             dataWriter.writeShort(chunkNumber);
             dataWriter.write(fileData);
+            
+            // DEBUG
+            System.out.println("-> DATA(" + TFTPClient.CODE_DATA + ") " + chunkNumber);
             
             return new DatagramPacket(dataStream.toByteArray(), dataStream.size(), serverAddress, serverPort);
         }

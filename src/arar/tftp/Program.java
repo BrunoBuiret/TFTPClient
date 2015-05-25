@@ -31,8 +31,8 @@ public abstract class Program
             System.out.println(
                 "Code de retour : " +
                 TFTPClient.sendFile(
-                    "Outils.txt",
-                    "Outils-remote.txt",
+                    "test.txt",
+                    "test-remote.txt",
                     InetAddress.getByName("127.0.0.1"),
                     69
                 )
