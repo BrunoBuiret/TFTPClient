@@ -12,6 +12,9 @@ public abstract class Program
 {
     public static void main(String[] args)
     {
+        String serverAddress = "134.214.117.93";
+        int serverPort = 69;
+        
         try
         {
             // Exemple de téléchargement depuis le serveur
@@ -19,10 +22,10 @@ public abstract class Program
             System.out.println(
                     "Code de retour : " +
                     TFTPClient.receiveFile(
-                        "mIRC.tx",
-                        "local-mIRC.txt",
-                        InetAddress.getByName("127.0.0.1"),
-                        69
+                        "Lighthouse.jpg",
+                        "local-Lighthouse.jpg",
+                        InetAddress.getByName(serverAddress),
+                        serverPort
                     )
             );
             */
@@ -31,10 +34,10 @@ public abstract class Program
             System.out.println(
                 "Code de retour : " +
                 TFTPClient.sendFile(
-                    "test.txt",
-                    "test-remote.txt",
-                    InetAddress.getByName("127.0.0.1"),
-                    69
+                    "Desert.jpg",
+                    "Desert-remote.jpg",
+                    InetAddress.getByName(serverAddress),
+                    serverPort
                 )
             );
         }

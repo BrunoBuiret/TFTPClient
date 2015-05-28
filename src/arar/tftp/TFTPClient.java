@@ -14,6 +14,7 @@ import java.net.InetAddress;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.Hashtable;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -79,6 +80,9 @@ public class TFTPClient
             requestPacket = new DatagramPacket(requestData, requestData.length, serverAddress, serverPort);
             socket.send(requestPacket);
             
+            // DEBUG
+            System.out.println("-> RRQ(" + TFTPClient.CODE_RRQ + ") " + remoteFile);
+            
             // Boucle de réception du fichier
             do
             {
@@ -96,6 +100,9 @@ public class TFTPClient
                     // de fichier et le nouveau port de communication
                     serverPort = responsePacket.getPort();
                     chunkNumber = ((responseData[2] & 0xFF) << 8)|(responseData[3] & 0xFF);
+                    
+                    // DEBUG
+                    System.out.println("<- DATA(" + TFTPClient.CODE_DATA + ") " + chunkNumber);
                     
                     if(!writtenChunks.containsKey(chunkNumber))
                     {
@@ -123,6 +130,11 @@ public class TFTPClient
                     requestData[3] -= '0';
                     requestPacket = new DatagramPacket(requestData, requestData.length, serverAddress, serverPort);
                     socket.send(requestPacket);
+                    
+                    // DEBUG
+                    requestData[2] += '0';
+                    requestData[3] += '0';
+                    System.out.println("-> ACK(" + TFTPClient.CODE_ACK + ") " + chunkNumber);
                     
                     if(responsePacket.getLength() < 516)
                     {
@@ -273,14 +285,20 @@ public class TFTPClient
                 do
                 {
                     // Lecture d'un morceau du fichier
+                    int realReadBytes;
                     fileData = new byte[512];
-                    input.read(fileData);
+                    
+                    realReadBytes = input.read(fileData);
+                    
+                    if(realReadBytes != 512)
+                        fileData = Arrays.copyOf(fileData, realReadBytes);
+                        
                     readBytes += fileData.length;
                     dataAcknowledged = false;
                     attemptsNumber = 0;
                     
                     // Changement du timeout pour ne pas attendre indéfiniment
-                    socket.setSoTimeout(3000);
+                    socket.setSoTimeout(30000);
                     
                     do
                     {
