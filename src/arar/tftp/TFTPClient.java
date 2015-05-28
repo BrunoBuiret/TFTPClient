@@ -15,7 +15,9 @@ import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Hashtable;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -55,129 +57,131 @@ public class TFTPClient
         
         if(file.exists())
         {
-            // Le fichier local existe déjà, on ne l'écrase pas
+            // Le fichier existe déjà en local, on ne l'écrase pas
             return -3;
         }
         
         try
         {
-            // Le fichier n'existe pas, on le crée
+            // Ouverture du fichier en local
             BufferedOutputStream output = new BufferedOutputStream(new FileOutputStream(file));
             
             // Socket de communication
             DatagramSocket socket = new DatagramSocket();
             
-            // Mémorisation des morceaux de fichiers reçus avec le nombre d'ACK
-            // envoyé pour ces morceaux
-            Hashtable<Integer, Integer> writtenChunks = new Hashtable<Integer, Integer>();
+            // Variables utilisées pour le transfert
+            Map<Integer, Integer> writtenChunks = new HashMap<Integer, Integer>();
+            int chunkNumber = 0;
             
             // Variables utilisées pour la communication
-            byte[] requestData, responseData;
-            DatagramPacket requestPacket, responsePacket;
+            DatagramPacket responsePacket;
+            byte[] responseData;
+            ByteBuffer responseBuffer;
             
             // Envoi de la requête de téléchargement de fichier depuis le serveur
-            requestData = ("\0\1" + remoteFile + "\0octet\0").getBytes();
-            requestPacket = new DatagramPacket(requestData, requestData.length, serverAddress, serverPort);
-            socket.send(requestPacket);
-            
-            // DEBUG
-            System.out.println("-> RRQ(" + TFTPClient.CODE_RRQ + ") " + remoteFile);
+            socket.send(TFTPClient.createRRQ(remoteFile, localFile, serverAddress, serverPort));
             
             // Boucle de réception du fichier
             do
             {
-                // Variables relatives au morceau de fichier actuel
-                int chunkNumber;
+                // Attente de la réponse
                 responseData = new byte[516];
                 responsePacket = new DatagramPacket(responseData, 516);
-                
-                // Attente d'envoi d'un message par le serveur
                 socket.receive(responsePacket);
                 
-                if(responseData[1] == TFTPClient.CODE_DATA)
+                // Puis décodage de la réponse
+                responseBuffer = ByteBuffer.wrap(responseData);
+                
+                if(responseBuffer.getShort() == TFTPClient.CODE_DATA)
                 {
-                    // On a reçu un code DATA(3), on extrait le numéro du morceau
-                    // de fichier et le nouveau port de communication
+                    // Mémorisation du nouveau port de communication
                     serverPort = responsePacket.getPort();
-                    chunkNumber = ((responseData[2] & 0xFF) << 8)|(responseData[3] & 0xFF);
                     
-                    // DEBUG
-                    System.out.println("<- DATA(" + TFTPClient.CODE_DATA + ") " + chunkNumber);
-                    
-                    if(!writtenChunks.containsKey(chunkNumber))
+                    // Extraction du numéro de bloc pour vérification
+                    if(responseBuffer.getShort(2) == chunkNumber + 1)
                     {
-                        // Ce morceau de fichier n'a encore été reçu, alors on
-                        // l'écrit dans le fichier local
-                        output.write(responseData, 4, 512);
-                        writtenChunks.put(chunkNumber, 1);
-                    }
-                    else if(writtenChunks.get(chunkNumber) == 3)
-                    {
-                        // C'est la quatrième fois qu'on reçoit ce morceau de fichier,
-                        // on interrompt le processus
-                        return -6;
+                        chunkNumber++;
+                        
+                        // DEBUG
+                        System.out.println("<- DATA(" + TFTPClient.CODE_DATA + ") " + chunkNumber);
+                        
+                        // Vérification du nombre de tentatives
+                        if(!writtenChunks.containsKey(chunkNumber))
+                        {
+                            // Ce morceau de fichier n'a pas encore été reçu, alors on
+                            // l'écrit dans le fichier local
+                            output.write(responseData, 4, responsePacket.getLength() - 4);
+                            writtenChunks.put(chunkNumber, 1);
+                        }
+                        else if(writtenChunks.get(chunkNumber) == 3)
+                        {
+                            // C'est la quatrième fois qu'on reçoit ce morceau de fichier,
+                            // on interrompt le transfert
+                            return -6;
+                        }
+                        else
+                        {
+                            // Ca ne fait que deux ou trois fois, on augmente le nombre
+                            // de tentatives d'acquittement
+                            writtenChunks.put(chunkNumber, writtenChunks.get(chunkNumber) + 1);
+                        }
+                        
+                        // Envoi de l'acquittement
+                        socket.send(TFTPClient.createACK(chunkNumber, serverAddress, serverPort));
+                        
+                        // Est-ce le dernier morceau de fichier ?
+                        if(responsePacket.getLength() < 516)
+                        {
+                            // C'est le dernier morceau de fichier reçu, il faut s'assurer
+                            // que le serveur ait bien reçu l'acquittement par une tamporisation
+                            boolean finalDataAcknowledged = false;
+                            socket.setSoTimeout(2000);
+                            
+                            do
+                            {
+                                try
+                                {
+                                    // L'acquittement peut s'être perdu donc on attend
+                                    // de voir si le serveur renvoit le dernier morceau
+                                    // du fichier
+                                    byte[] finalData = new byte[516];
+                                    DatagramPacket finalPacket = new DatagramPacket(finalData, 516);
+                                    socket.receive(finalPacket);
+                                    ByteBuffer finalBuffer = ByteBuffer.wrap(finalData);
+                                    
+                                    if(finalBuffer.getShort() == TFTPClient.CODE_DATA)
+                                    {
+                                        // On renvoit l'acquittement
+                                        socket.send(TFTPClient.createACK(chunkNumber, serverAddress, serverPort));
+                                    }
+                                    else
+                                    {
+                                        // Sinon, on a reçu une erreur, on extrait son code
+                                        return finalBuffer.getShort();
+                                    }
+                                }
+                                catch(SocketTimeoutException e)
+                                {
+                                    // On n'a rien reçu, le dernier acquittement a bien été reçu
+                                    finalDataAcknowledged = true;
+                                }
+                            }
+                            while(!finalDataAcknowledged);
+                            
+                            socket.setSoTimeout(0);
+                        }
                     }
                     else
                     {
-                        // Ca ne fait que deux ou trois fois, on augmente le nombre
-                        // de tentatives d'acquittement
-                        writtenChunks.put(chunkNumber, writtenChunks.get(chunkNumber) + 1);
-                    }
-                    
-                    // Envoi d'un acquitemment
-                    requestData = ("\0\4" + responseData[2] + responseData[3]).getBytes();
-                    requestData[2] -= '0';
-                    requestData[3] -= '0';
-                    requestPacket = new DatagramPacket(requestData, requestData.length, serverAddress, serverPort);
-                    socket.send(requestPacket);
-                    
-                    // DEBUG
-                    requestData[2] += '0';
-                    requestData[3] += '0';
-                    System.out.println("-> ACK(" + TFTPClient.CODE_ACK + ") " + chunkNumber);
-                    
-                    if(responsePacket.getLength() < 516)
-                    {
-                        // C'est le dernier morceau de fichier reçu, il faut s'assurer que le serveur
-                        // ait bien reçu l'acquittement par une tamporisation
-                        boolean finalDataAcknowledged = false;
-                        socket.setSoTimeout(2000);
-                        
-                        do
-                        {
-                            try
-                            {
-                                // L'acquittement peut s'être perdu donc on attend de voir
-                                // si le serveur renvoit le dernier morceau du fichier
-                                byte[] finalData = new byte[516];
-                                DatagramPacket finalPacket = new DatagramPacket(finalData, 516);
-                                socket.receive(finalPacket);
-                                
-                                if(finalData[1] == TFTPClient.CODE_DATA)
-                                {
-                                    requestData = ("\0\4" + finalData[2] + finalData[3]).getBytes();
-                                    requestPacket = new DatagramPacket(requestData, requestData.length, serverAddress, serverPort);
-                                    socket.send(requestPacket);
-                                }
-                            }
-                            catch(SocketTimeoutException e)
-                            {
-                                // On n'a rien reçu c'est que le dernier acquittement
-                                // a bien été reçu
-                                finalDataAcknowledged = true;
-                            }
-                        }
-                        while(!finalDataAcknowledged);
-                        
-                        socket.setSoTimeout(0);
+                        // Erreur de réseau : mauvais bloc reçu
+                        return -6;
                     }
                 }
                 else
                 {
-                    // Si on n'a pas reçu un code DATA(3), alors c'est qu'on a reçu
-                    // un code ERROR(5) et on extrait le code de l'erreur pour le
-                    // renvoyer
-                    return ((responseData[2] & 0xFF) << 8)|(responseData[3] & 0xFF);
+                    // Si on n'a pas reçu un code DATA(3), c'est qu'on a reçu
+                    // un code ERROR(5), on extrait donc le code d'erreur
+                    return responseBuffer.getShort();
                 }
             }
             while(responsePacket.getLength() == 516);
@@ -195,7 +199,7 @@ public class TFTPClient
         }
         catch(SocketException e)
         {
-            // Impossible de créer le socket
+            // Impossible de créer el socket
             return -6;
         }
         catch(IOException e)
@@ -204,7 +208,6 @@ public class TFTPClient
             return -7;
         }
         
-        // Il n'y a pas eu d'erreur
         return 0;
     }
     
