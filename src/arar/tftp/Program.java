@@ -18,7 +18,6 @@ public abstract class Program
         try
         {
             // Exemple de téléchargement depuis le serveur
-            /*
             System.out.println(
                     "Code de retour : " +
                     TFTPClient.receiveFile(
@@ -28,9 +27,9 @@ public abstract class Program
                         serverPort
                     )
             );
-            */
             
             // Exemple de téléchargement vers le serveur
+            /*
             System.out.println(
                 "Code de retour : " +
                 TFTPClient.sendFile(
@@ -40,6 +39,7 @@ public abstract class Program
                     serverPort
                 )
             );
+            */
         }
         catch(UnknownHostException e)
         {

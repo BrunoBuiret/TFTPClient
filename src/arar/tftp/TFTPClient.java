@@ -394,13 +394,52 @@ public class TFTPClient
     }
     
     /**
+     * Création d'un datagramme TFTP RRQ.
+     * 
+     * @param remoteFile Chemin vers le fichier distant sur le serveur.
+     * @param mode Mode de transfert
+     * @param serverAddress Adresse du serveur TFTP.
+     * @param serverPort Port du serveur TFTP.
+     * @return Datagramme TFTP RRQ ou null s'il y a eu une erreur.
+     */
+    protected static DatagramPacket createRRQ(String remoteFile, String mode, InetAddress serverAddress, int serverPort)
+    {
+        ByteArrayOutputStream dataStream;
+        DataOutputStream dataWriter;
+        
+        // Manipulateur de tableau d'octets
+        dataWriter = new DataOutputStream(dataStream = new ByteArrayOutputStream(4 + remoteFile.length() + mode.length()));
+        
+        try
+        {
+            // Ecriture du contenu du paquet
+            dataWriter.writeShort(TFTPClient.CODE_RRQ);
+            dataWriter.writeBytes(remoteFile);
+            dataWriter.writeByte(0);
+            dataWriter.writeBytes(mode);
+            dataWriter.writeByte(0);
+            
+            // DEBUG
+            System.out.println("-> RRQ(" + TFTPClient.CODE_RRQ + ") " + remoteFile);
+            
+            return new DatagramPacket(dataStream.toByteArray(), dataStream.size(), serverAddress, serverPort);
+        }
+        catch(IOException e)
+        {
+            Logger.getLogger(TFTPClient.class.getName()).log(Level.SEVERE, e.getMessage(), e);
+        }
+        
+        return null;
+    }
+    
+    /**
      * Création d'un datagramme TFTP WRQ.
      * 
      * @param remoteFile Chemin vers le fichier distant sur le serveur.
      * @param mode Mode de transfert
      * @param serverAddress Adresse du serveur TFTP.
      * @param serverPort Port du serveur TFTP.
-     * @return Datagramme TFTP QRW ou null s'il y a eu une erreur.
+     * @return Datagramme TFTP WRQ ou null s'il y a eu une erreur.
      */
     protected static DatagramPacket createWRQ(String remoteFile, String mode, InetAddress serverAddress, int serverPort)
     {
@@ -458,6 +497,41 @@ public class TFTPClient
             
             // DEBUG
             System.out.println("-> DATA(" + TFTPClient.CODE_DATA + ") " + chunkNumber);
+            
+            return new DatagramPacket(dataStream.toByteArray(), dataStream.size(), serverAddress, serverPort);
+        }
+        catch(IOException e)
+        {
+            Logger.getLogger(TFTPClient.class.getName()).log(Level.SEVERE, e.getMessage(), e);
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Création d'un datagramme TFTP ACK.
+     * 
+     * @param chunkNumber Numéro de bloc de données du fichier.
+     * @param serverAddress Adresse du serveur TFTP.
+     * @param serverPort Port du serveur TFTP.
+     * @return Datagramme TFTP ACK ou null s'il y a eu une erreur.
+     */
+    protected static DatagramPacket createACK(int chunkNumber, InetAddress serverAddress, int serverPort)
+    {
+        ByteArrayOutputStream dataStream;
+        DataOutputStream dataWriter;
+        
+        // Manipulateur de tableau d'octets
+        dataWriter = new DataOutputStream(dataStream = new ByteArrayOutputStream(4));
+        
+        try
+        {
+            // Ecriture du contenu du paquet
+            dataWriter.writeShort(TFTPClient.CODE_ACK);
+            dataWriter.writeShort(chunkNumber);
+            
+            // DEBUG
+            System.out.println("-> ACK(" + TFTPClient.CODE_ACK + ") " + chunkNumber);
             
             return new DatagramPacket(dataStream.toByteArray(), dataStream.size(), serverAddress, serverPort);
         }
