@@ -11,8 +11,7 @@ import java.net.UnknownHostException;
 import javax.swing.JFileChooser;
 
 /**
- *
- * @author PtitBlond
+ * @author Bruno Buiret, Thomas Arnaud, Sydney Adjou
  */
 public class TFTPView extends javax.swing.JFrame
 {
