@@ -16,7 +16,6 @@ import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.Hashtable;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -199,7 +198,7 @@ public class TFTPClient
         }
         catch(SocketException e)
         {
-            // Impossible de créer el socket
+            // Impossible de créer le socket
             return -6;
         }
         catch(IOException e)
