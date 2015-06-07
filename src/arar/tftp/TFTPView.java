@@ -347,19 +347,19 @@ public class TFTPView extends javax.swing.JFrame
                                 69
                         ))
                         {
-                            case 0:
+                            case TFTPClient.SUCCESS:
                                 this.downloadLog.append("Successfully downloaded " + this.downloadRemoteFileName.getText() + ".\n");
                             break;
                             
-                            case -3:
+                            case TFTPClient.ERROR_FILE_ALREADY_EXISTS:
                                 this.downloadLog.append("Local file " + this.downloadLocalFilePath.getText() + " already exists.\n");
                             break;
                                 
-                            case -6:
+                            case TFTPClient.ERROR_NETWORK:
                                 this.downloadLog.append("Network error.\n");
                             break;
                             
-                            case -7:
+                            case TFTPClient.ERROR_IO:
                                 this.downloadLog.append("I/O error.\n");
                             break;
                             
@@ -411,31 +411,31 @@ public class TFTPView extends javax.swing.JFrame
                             69
                     ))
                     {
-                        case 0:
+                        case TFTPClient.SUCCESS:
                             this.sendLog.append("Successfully uploaded " + this.sendLocalFilePath.getText() + ".\n");
                         break;
                             
-                        case -1:
+                        case TFTPClient.ERROR_FILE_NOT_FOUND:
                             this.sendLog.append(this.sendLocalFilePath.getText() + " doesn't exist.\n");
                         break;
                             
-                        case -2:
+                        case TFTPClient.ERROR_ACCESS_VIOLATION:
                             this.sendLog.append(this.sendLocalFilePath.getText() + " can't be read.\n");
                         break;
                             
-                        case -4:
+                        case TFTPClient.ERROR_TIMEOUT:
                             this.downloadLog.append("Timeout.\n");
                         break;
                         
-                        case -5:
+                        case TFTPClient.ERROR_NOT_A_FILE:
                             this.sendLog.append(this.sendLocalFilePath.getText() + " isn't a file.\n");
                         break;
                             
-                        case -6:
+                        case TFTPClient.ERROR_NETWORK:
                             this.downloadLog.append("Network error.\n");
                         break;
                         
-                        case -7:
+                        case TFTPClient.ERROR_IO:
                             this.downloadLog.append("I/O error.\n");
                         break;
                         

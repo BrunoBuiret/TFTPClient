@@ -25,20 +25,75 @@ import java.util.logging.Logger;
  */
 public class TFTPClient
 {
-    // Read request (RRQ)
+    /**
+     * Read request (RRQ) code.
+     */
     protected final static short CODE_RRQ = 1;
     
-    // Write request (WRQ)
+    /**
+     * Write request (WRQ) code.
+     */
     protected final static short CODE_WRQ = 2;
     
-    // Data (DATA)
+    /**
+     * Data (DATA) code.
+     */
     protected final static short CODE_DATA = 3;
     
-    // Acknowledgement (ACK)
+    /**
+     * Acknowledgement (ACK) code.
+     */
     protected final static short CODE_ACK = 4;
     
-    // Error (ERROR)
+    /**
+     * Error (ERROR) code.
+     */
     protected final static short CODE_ERROR = 5;
+    
+    /**
+     * Success code.
+     */
+    public final static byte SUCCESS = 0;
+    
+    /**
+     * Error code when a file doesn't exist.
+     */
+    public final static byte ERROR_FILE_NOT_FOUND = -1;
+    
+    /**
+     * Error code for an access violation.
+     */
+    public final static byte ERROR_ACCESS_VIOLATION = -2;
+    
+    /**
+     * Error when the file already exists.
+     */
+    public final static byte ERROR_FILE_ALREADY_EXISTS = -3;
+    
+    /**
+     * Timeout error.
+     */
+    public final static byte ERROR_TIMEOUT = -4;
+    
+    /**
+     * Error when the file supposed to be sent isn't one.
+     */
+    public final static byte ERROR_NOT_A_FILE = -5;
+    
+    /**
+     * Network error.
+     */
+    public final static byte ERROR_NETWORK = -6;
+    
+    /**
+     * I/O error.
+     */
+    public final static byte ERROR_IO = -7;
+    
+    /**
+     * Should exchanges be printed for debugging ?
+     */
+    public static boolean debugMode = false;
     
     /**
      * Téléchargement d'un fichier depuis le serveur TFTP.
@@ -47,7 +102,7 @@ public class TFTPClient
      * @param localFile Chemin vers le fichier local.
      * @param serverAddress Adresse du serveur TFTP.
      * @param serverPort Port du serveur TFTP.
-     * @return 0 ou le code d'erreur.
+     * @return <code>0</code> si tout s'est bien passé ou le code d'erreur.
      */
     public static int receiveFile(String remoteFile, String localFile, InetAddress serverAddress, int serverPort)
     {
@@ -57,7 +112,7 @@ public class TFTPClient
         if(file.exists())
         {
             // Le fichier existe déjà en local, on ne l'écrase pas
-            return -3;
+            return TFTPClient.ERROR_FILE_ALREADY_EXISTS;
         }
         
         try
@@ -69,7 +124,7 @@ public class TFTPClient
             DatagramSocket socket = new DatagramSocket();
             
             // Variables utilisées pour le transfert
-            Map<Integer, Integer> writtenChunks = new HashMap<Integer, Integer>();
+            Map<Integer, Integer> writtenChunks = new HashMap<>();
             int chunkNumber = 0;
             
             // Variables utilisées pour la communication
@@ -101,8 +156,9 @@ public class TFTPClient
                     {
                         chunkNumber++;
                         
-                        // DEBUG
-                        System.out.println("<- DATA(" + TFTPClient.CODE_DATA + ") " + chunkNumber);
+                        // Print exchange if it's debug mode
+                        if(TFTPClient.debugMode)
+                            System.out.println("<- DATA(" + TFTPClient.CODE_DATA + ") " + chunkNumber);
                         
                         // Vérification du nombre de tentatives
                         if(!writtenChunks.containsKey(chunkNumber))
@@ -116,7 +172,7 @@ public class TFTPClient
                         {
                             // C'est la quatrième fois qu'on reçoit ce morceau de fichier,
                             // on interrompt le transfert
-                            return -6;
+                            return TFTPClient.ERROR_NETWORK;
                         }
                         else
                         {
@@ -173,7 +229,7 @@ public class TFTPClient
                     else
                     {
                         // Erreur de réseau : mauvais bloc reçu
-                        return -6;
+                        return TFTPClient.ERROR_NETWORK;
                     }
                 }
                 else
@@ -194,20 +250,20 @@ public class TFTPClient
         catch(FileNotFoundException e)
         {
             // Impossible de créer le fichier
-            return -1;
+            return TFTPClient.ERROR_FILE_NOT_FOUND;
         }
         catch(SocketException e)
         {
             // Impossible de créer le socket
-            return -6;
+            return TFTPClient.ERROR_NETWORK;
         }
         catch(IOException e)
         {
             // Erreur d'entrée / sortie par rapport à la socket
-            return -7;
+            return TFTPClient.ERROR_IO;
         }
         
-        return 0;
+        return TFTPClient.SUCCESS;
     }
     
     /**
@@ -227,17 +283,17 @@ public class TFTPClient
         if(!file.exists())
         {
             // Le fichier n'existe pas
-            return -1;
+            return TFTPClient.ERROR_FILE_NOT_FOUND;
         }
         else if(!file.isFile())
         {
             // Format de fichier invalide
-            return -5;
+            return TFTPClient.ERROR_NOT_A_FILE;
         }
         else if(!file.canRead())
         {
             // Droit de lecture non possédé
-            return -2;
+            return TFTPClient.ERROR_ACCESS_VIOLATION;
         }
         
         try
@@ -271,11 +327,12 @@ public class TFTPClient
             code = responseBuffer.getShort();
             chunkNumber = responseBuffer.getShort();
             
-            // DEBUG
-            System.out.println("<- " + responseBuffer.getShort(0) + " " + responseBuffer.getShort(2));
-            
-            if(code == 4 && chunkNumber == 0)
+            if(code == TFTPClient.CODE_ACK && chunkNumber == 0)
             {
+                // Print exchange if it's debug mode
+                if(TFTPClient.debugMode)
+                    System.out.println("<- ACK(" + TFTPClient.CODE_ACK + ") " + responseBuffer.getShort(2));
+                
                 // Mémorisation du nouveau port
                 serverPort = responsePacket.getPort();
                 
@@ -316,12 +373,12 @@ public class TFTPClient
                             
                             // Décodage de la réponse
                             responseBuffer = ByteBuffer.wrap(responseData);
-                            
-                            // DEBUG
-                            System.out.println("<- " + responseBuffer.getShort(0) + " " + responseBuffer.getShort(2));
 
                             if(responseBuffer.getShort() == TFTPClient.CODE_ACK)
                             {
+                                if(TFTPClient.debugMode)
+                                    System.out.println("<- ACK(" + TFTPClient.CODE_ACK + ") " + responseBuffer.getShort(2));
+                                
                                 if(responseBuffer.getShort() == chunkNumber)
                                 {
                                     dataAcknowledged = true;
@@ -329,7 +386,7 @@ public class TFTPClient
                                 else
                                 {
                                     // Erreur d'acquittement, problème de réseau
-                                    return -6;
+                                    return TFTPClient.ERROR_NETWORK;
                                 }
                             }
                             else
@@ -355,7 +412,7 @@ public class TFTPClient
                     if(attemptsNumber == 3)
                     {
                         // Trop de tentatives d'envoi du morceau de fichier
-                        return -4;
+                        return TFTPClient.ERROR_TIMEOUT;
                     }
                     
                     // Incrémentation du numéro de fichier
@@ -379,20 +436,20 @@ public class TFTPClient
         catch(FileNotFoundException e)
         {
             // Le fichier n'existe pas
-            return -1;
+            return TFTPClient.ERROR_FILE_NOT_FOUND;
         }
         catch(SocketException e)
         {
             // Impossible de créer le socket
-            return -6;
+            return TFTPClient.ERROR_NETWORK;
         }
         catch(IOException e)
         {
             // Erreur d'entrée/sortie par rapport à la socket
-            return -7;
+            return TFTPClient.ERROR_IO;
         }
         
-        return 0;
+        return TFTPClient.SUCCESS;
     }
     
     /**
@@ -421,8 +478,9 @@ public class TFTPClient
             dataWriter.writeBytes(mode);
             dataWriter.writeByte(0);
             
-            // DEBUG
-            System.out.println("-> RRQ(" + TFTPClient.CODE_RRQ + ") " + remoteFile);
+            // Print exchange if it's debug mode
+            if(TFTPClient.debugMode)
+                System.out.println("-> RRQ(" + TFTPClient.CODE_RRQ + ") " + remoteFile);
             
             return new DatagramPacket(dataStream.toByteArray(), dataStream.size(), serverAddress, serverPort);
         }
@@ -460,8 +518,9 @@ public class TFTPClient
             dataWriter.writeBytes(mode);
             dataWriter.writeByte(0);
             
-            // DEBUG
-            System.out.println("-> WRQ(" + TFTPClient.CODE_WRQ + ") " + remoteFile);
+            // Print exchange if it's debug mode
+            if(TFTPClient.debugMode)
+                System.out.println("-> WRQ(" + TFTPClient.CODE_WRQ + ") " + remoteFile);
             
             return new DatagramPacket(dataStream.toByteArray(), dataStream.size(), serverAddress, serverPort);
         }
@@ -497,8 +556,9 @@ public class TFTPClient
             dataWriter.writeShort(chunkNumber);
             dataWriter.write(fileData);
             
-            // DEBUG
-            System.out.println("-> DATA(" + TFTPClient.CODE_DATA + ") " + chunkNumber);
+            // Print exchange if it's debug mode
+            if(TFTPClient.debugMode)
+                System.out.println("-> DATA(" + TFTPClient.CODE_DATA + ") " + chunkNumber);
             
             return new DatagramPacket(dataStream.toByteArray(), dataStream.size(), serverAddress, serverPort);
         }
@@ -532,8 +592,9 @@ public class TFTPClient
             dataWriter.writeShort(TFTPClient.CODE_ACK);
             dataWriter.writeShort(chunkNumber);
             
-            // DEBUG
-            System.out.println("-> ACK(" + TFTPClient.CODE_ACK + ") " + chunkNumber);
+            // Print exchange if it's debug mode
+            if(TFTPClient.debugMode)
+                System.out.println("-> ACK(" + TFTPClient.CODE_ACK + ") " + chunkNumber);
             
             return new DatagramPacket(dataStream.toByteArray(), dataStream.size(), serverAddress, serverPort);
         }
