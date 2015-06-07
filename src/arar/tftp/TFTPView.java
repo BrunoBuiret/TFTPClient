@@ -341,10 +341,10 @@ public class TFTPView extends javax.swing.JFrame
                         this.downloadButton.setEnabled(false);
                         
                         switch(errorCode = TFTPClient.receiveFile(                        
-                                this.downloadRemoteFileName.getText(),
-                                this.downloadLocalFilePath.getText(),
-                                InetAddress.getByName(this.downloadServerAddress.getText()),
-                                69
+                            this.downloadRemoteFileName.getText(),
+                            this.downloadLocalFilePath.getText(),
+                            InetAddress.getByName(this.downloadServerAddress.getText()),
+                            69
                         ))
                         {
                             case TFTPClient.SUCCESS:
@@ -405,10 +405,10 @@ public class TFTPView extends javax.swing.JFrame
                     this.sendButton.setEnabled(false);
                     
                     switch(errorCode = TFTPClient.sendFile(                        
-                            this.sendLocalFilePath.getText(),
-                            remoteFileName,
-                            InetAddress.getByName(this.sendServerAddress.getText()),
-                            69
+                        this.sendLocalFilePath.getText(),
+                        remoteFileName,
+                        InetAddress.getByName(this.sendServerAddress.getText()),
+                        69
                     ))
                     {
                         case TFTPClient.SUCCESS:
