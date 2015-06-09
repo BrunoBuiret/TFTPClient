@@ -420,6 +420,74 @@ public class TFTPClient
                 }
                 while(readBytes < totalBytes);
                 
+                // Si la tailel du fichier est un multiple de 512, il faut envoyer un
+                // dernier bloc de données vide
+                if(totalBytes % 512 == 0)
+                {
+                    // Initialisation des variables pour cet échange
+                    dataAcknowledged = false;
+                    attemptsNumber = 0;
+                    
+                    // Changement du timeout pour ne pas attendre indéfiniment
+                    socket.setSoTimeout(30000);
+                    
+                    do
+                    {
+                        try
+                        {
+                            // Envoi du morceau de fichier
+                            socket.send(TFTPClient.createDATA(chunkNumber, new byte[0], serverAddress, serverPort));
+
+                            // Attente de l'acquittement
+                            responseData = new byte[512];
+                            responsePacket = new DatagramPacket(responseData, 512);
+                            socket.receive(responsePacket);
+                            
+                            // Décodage de la réponse
+                            responseBuffer = ByteBuffer.wrap(responseData);
+
+                            if(responseBuffer.getShort() == TFTPClient.CODE_ACK)
+                            {
+                                if(TFTPClient.debugMode)
+                                    System.out.println("<- ACK(" + TFTPClient.CODE_ACK + ") " + responseBuffer.getShort(2));
+                                
+                                if(responseBuffer.getShort() == chunkNumber)
+                                {
+                                    dataAcknowledged = true;
+                                }
+                                else
+                                {
+                                    // Erreur d'acquittement, problème de réseau
+                                    return TFTPClient.ERROR_NETWORK;
+                                }
+                            }
+                            else
+                            {
+                                // Une erreur a eu lieu, on extrait le code d'erreur
+                                // du serveur
+                                return responseBuffer.getShort();
+                            }
+
+                            // Incrémentation du nombre de tentatives
+                            attemptsNumber++;
+                        }
+                        catch(SocketTimeoutException e)
+                        {
+                            dataAcknowledged = false;
+                        }
+                    }
+                    while(!dataAcknowledged && attemptsNumber < 3);
+                    
+                    // Rétablissement du timeout infini
+                    socket.setSoTimeout(0);
+                    
+                    if(attemptsNumber == 3)
+                    {
+                        // Trop de tentatives d'envoi du morceau de fichier
+                        return TFTPClient.ERROR_TIMEOUT;
+                    }
+                }
+                
                 // Fermeture du fichier
                 input.close();
                 
