@@ -8,6 +8,8 @@ package arar.tftp;
 import java.io.File;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import javax.swing.JFileChooser;
 
 /**
@@ -15,12 +17,15 @@ import javax.swing.JFileChooser;
  */
 public class TFTPView extends javax.swing.JFrame
 {
+    protected ExecutorService executor;
+    
     /**
      * Creates new form NewJFrame
      */
     public TFTPView()
     {
         initComponents();
+        this.executor = Executors.newFixedThreadPool(2);
     }
 
     /**
@@ -328,137 +333,151 @@ public class TFTPView extends javax.swing.JFrame
 
     private void downloadFile(java.awt.event.ActionEvent evt)//GEN-FIRST:event_downloadFile
     {//GEN-HEADEREND:event_downloadFile
-        if(!this.downloadRemoteFileName.getText().isEmpty())
+        TFTPView that = this;
+        
+        this.executor.execute(() ->
         {
-            if(!this.downloadLocalFilePath.getText().isEmpty())
+            if(!that.downloadRemoteFileName.getText().isEmpty())
             {
-                if(!this.downloadServerAddress.getText().isEmpty())
+                if(!that.downloadLocalFilePath.getText().isEmpty())
                 {
-                    try
+                    if(!that.downloadServerAddress.getText().isEmpty())
                     {
-                        int errorCode;
-                        
-                        this.downloadButton.setEnabled(false);
-                        
-                        switch(errorCode = TFTPClient.receiveFile(                        
-                            this.downloadRemoteFileName.getText(),
-                            this.downloadLocalFilePath.getText(),
-                            InetAddress.getByName(this.downloadServerAddress.getText()),
-                            69
-                        ))
+                        try
                         {
-                            case TFTPClient.SUCCESS:
-                                this.downloadLog.append("Successfully downloaded " + this.downloadRemoteFileName.getText() + ".\n");
-                            break;
-                            
-                            case TFTPClient.ERROR_FILE_ALREADY_EXISTS:
-                                this.downloadLog.append("Local file " + this.downloadLocalFilePath.getText() + " already exists.\n");
-                            break;
-                                
-                            case TFTPClient.ERROR_NETWORK:
-                                this.downloadLog.append("Network error.\n");
-                            break;
-                            
-                            case TFTPClient.ERROR_IO:
-                                this.downloadLog.append("I/O error.\n");
-                            break;
-                            
-                            default:
-                                this.downloadLog.append("TFTP server error " + errorCode + ".\n");
+                            int errorCode;
+
+                            that.downloadButton.setEnabled(false);
+
+                            switch(errorCode = TFTPClient.receiveFile(                        
+                                that.downloadRemoteFileName.getText(),
+                                that.downloadLocalFilePath.getText(),
+                                InetAddress.getByName(that.downloadServerAddress.getText()),
+                                69
+                            ))
+                            {
+                                case TFTPClient.SUCCESS:
+                                    that.downloadLog.append("Successfully downloaded " + that.downloadRemoteFileName.getText() + ".\n");
+                                break;
+
+                                case TFTPClient.ERROR_FILE_ALREADY_EXISTS:
+                                    that.downloadLog.append("Local file " + that.downloadLocalFilePath.getText() + " already exists.\n");
+                                break;
+
+                                case TFTPClient.ERROR_NETWORK:
+                                    that.downloadLog.append("Network error.\n");
+                                break;
+
+                                case TFTPClient.ERROR_IO:
+                                    that.downloadLog.append("I/O error.\n");
+                                break;
+
+                                default:
+                                    that.downloadLog.append("TFTP server error " + errorCode + ".\n");
+                            }
                         }
-                        
-                        this.downloadButton.setEnabled(true);
+                        catch(UnknownHostException e)
+                        {
+                            that.downloadLog.append("Couldn't resolve server address: " + e.getMessage() + "\n");
+                        }
+                        finally
+                        {
+                            that.downloadButton.setEnabled(true);
+                        }
                     }
-                    catch(UnknownHostException e)
+                    else
                     {
-                        this.downloadLog.append("Couldn't resolve server address: " + e.getMessage() + "\n");
+                        that.downloadLog.append("Server address missing.\n");
                     }
                 }
                 else
                 {
-                    this.downloadLog.append("Server address missing.\n");
+                    that.downloadLog.append("No local file path indicated.\n");
                 }
             }
             else
             {
-                this.downloadLog.append("No local file path indicated.\n");
+                that.downloadLog.append("No remote file selected.\n");
             }
-        }
-        else
-        {
-            this.downloadLog.append("No remote file selected.\n");
-        }
+        });
     }//GEN-LAST:event_downloadFile
 
     private void sendFile(java.awt.event.ActionEvent evt)//GEN-FIRST:event_sendFile
     {//GEN-HEADEREND:event_sendFile
-        if(!this.sendLocalFilePath.getText().isEmpty())
+        TFTPView that = this;
+        
+        this.executor.execute(() ->
         {
-            if(!this.sendServerAddress.getText().isEmpty())
+            if(!that.sendLocalFilePath.getText().isEmpty())
             {
-                String remoteFileName = !this.sendRemoteFileName.getText().isEmpty() ? this.sendRemoteFileName.getText() : (new File(this.sendLocalFilePath.getText())).getName();
-                
-                try
+                if(!that.sendServerAddress.getText().isEmpty())
                 {
-                    int errorCode;
-                    
-                    this.sendButton.setEnabled(false);
-                    
-                    switch(errorCode = TFTPClient.sendFile(                        
-                        this.sendLocalFilePath.getText(),
-                        remoteFileName,
-                        InetAddress.getByName(this.sendServerAddress.getText()),
-                        69
-                    ))
+                    String remoteFileName = !that.sendRemoteFileName.getText().isEmpty() ? that.sendRemoteFileName.getText() : (new File(that.sendLocalFilePath.getText())).getName();
+
+                    try
                     {
-                        case TFTPClient.SUCCESS:
-                            this.sendLog.append("Successfully uploaded " + this.sendLocalFilePath.getText() + ".\n");
-                        break;
-                            
-                        case TFTPClient.ERROR_FILE_NOT_FOUND:
-                            this.sendLog.append(this.sendLocalFilePath.getText() + " doesn't exist.\n");
-                        break;
-                            
-                        case TFTPClient.ERROR_ACCESS_VIOLATION:
-                            this.sendLog.append(this.sendLocalFilePath.getText() + " can't be read.\n");
-                        break;
-                            
-                        case TFTPClient.ERROR_TIMEOUT:
-                            this.downloadLog.append("Timeout.\n");
-                        break;
-                        
-                        case TFTPClient.ERROR_NOT_A_FILE:
-                            this.sendLog.append(this.sendLocalFilePath.getText() + " isn't a file.\n");
-                        break;
-                            
-                        case TFTPClient.ERROR_NETWORK:
-                            this.downloadLog.append("Network error.\n");
-                        break;
-                        
-                        case TFTPClient.ERROR_IO:
-                            this.downloadLog.append("I/O error.\n");
-                        break;
-                        
-                        default:
-                            this.sendLog.append("TFTP server error " + errorCode + ".\n");
+                        int errorCode;
+
+                        that.sendButton.setEnabled(false);
+
+                        switch(errorCode = TFTPClient.sendFile(                        
+                            that.sendLocalFilePath.getText(),
+                            remoteFileName,
+                            InetAddress.getByName(that.sendServerAddress.getText()),
+                            69
+                        ))
+                        {
+                            case TFTPClient.SUCCESS:
+                                that.sendLog.append("Successfully uploaded " + that.sendLocalFilePath.getText() + ".\n");
+                            break;
+
+                            case TFTPClient.ERROR_FILE_NOT_FOUND:
+                                that.sendLog.append(that.sendLocalFilePath.getText() + " doesn't exist.\n");
+                            break;
+
+                            case TFTPClient.ERROR_ACCESS_VIOLATION:
+                                that.sendLog.append(that.sendLocalFilePath.getText() + " can't be read.\n");
+                            break;
+
+                            case TFTPClient.ERROR_TIMEOUT:
+                                that.downloadLog.append("Timeout.\n");
+                            break;
+
+                            case TFTPClient.ERROR_NOT_A_FILE:
+                                that.sendLog.append(this.sendLocalFilePath.getText() + " isn't a file.\n");
+                            break;
+
+                            case TFTPClient.ERROR_NETWORK:
+                                that.downloadLog.append("Network error.\n");
+                            break;
+
+                            case TFTPClient.ERROR_IO:
+                                that.downloadLog.append("I/O error.\n");
+                            break;
+
+                            default:
+                                that.sendLog.append("TFTP server error " + errorCode + ".\n");
+                        }
                     }
-                    
-                    this.sendButton.setEnabled(true);
+                    catch(UnknownHostException e)
+                    {
+                        that.sendLog.append("Couldn't resolve server address: " + e.getMessage() + "\n");
+                    }
+                    finally
+                    {
+                        that.sendButton.setEnabled(true);
+                    }
                 }
-                catch(UnknownHostException e)
+                else
                 {
-                    this.sendLog.append("Couldn't resolve server address: " + e.getMessage() + "\n");
+                    that.sendLog.append("Server address missing.\n");
                 }
             }
             else
             {
-                this.sendLog.append("Server address missing.\n");
+                that.sendLog.append("No local file selected.\n");
             }
-        }
-        else
-        {
-            this.sendLog.append("No local file selected.\n");
-        }
+        });
     }//GEN-LAST:event_sendFile
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
